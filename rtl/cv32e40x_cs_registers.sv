@@ -1454,7 +1454,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   /////////////////////////////////////////////////////////////////
 
   // Flop certain events to ease timing
-  localparam bit [15:0] HPM_EVENT_FLOP     = 16'b1111_1111_1100_0000;
   localparam bit [31:0] MCOUNTINHIBIT_MASK = {{(29-NUM_MHPMCOUNTERS){1'b0}},{(NUM_MHPMCOUNTERS){1'b1}},3'b101};
 
   logic [15:0]          hpm_events_raw;
@@ -1465,8 +1464,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   genvar                hpm_idx;
   generate
     for(hpm_idx=0; hpm_idx<16; hpm_idx++) begin
-      if(HPM_EVENT_FLOP[hpm_idx]) begin: hpm_event_flop
-
         always_ff @(posedge clk, negedge rst_n) begin
           if (rst_n == 1'b0) begin
             hpm_events[hpm_idx] <= 1'b0;
@@ -1476,11 +1473,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             end
           end
         end
-
-      end
-      else begin: hpm_even_no_flop
-        assign hpm_events[hpm_idx] = hpm_events_raw[hpm_idx];
-      end
     end
   endgenerate
 
@@ -1644,14 +1636,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       // there is no counter at index 1
       // minstret is located at index 2
       // Programable HPM counters start at index 3
-      if( (cnt_gidx == 1) ||
-          (cnt_gidx >= (NUM_MHPMCOUNTERS+3) ) )
-        begin : gen_non_implemented
-        assign mhpmcounter_q[cnt_gidx] = 'b0;
-      end
-      else begin : gen_implemented
         always_ff @(posedge clk, negedge rst_n)
-          if (!rst_n) begin
+          if( (cnt_gidx == 1) || (cnt_gidx >= (NUM_MHPMCOUNTERS+3) ) || !rst_n ) begin
             mhpmcounter_q[cnt_gidx] <= 'b0;
           end else begin
             if (mhpmcounter_we[cnt_gidx][0]) begin
@@ -1661,7 +1647,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
               mhpmcounter_q[cnt_gidx][63:32] <= mhpmcounter_n[cnt_gidx][63:32];
             end
           end
-      end
       assign mhpmcounter_rdata[cnt_gidx] = mhpmcounter_q[cnt_gidx];
     end
   endgenerate
@@ -1671,23 +1656,17 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   generate
     for (evt_gidx = 0; evt_gidx < 32; evt_gidx++) begin : gen_mhpmevent
       // programable HPM events start at index3
-      if( (evt_gidx < 3) ||
-          (evt_gidx >= (NUM_MHPMCOUNTERS+3) ) )
-        begin : gen_non_implemented
-        assign mhpmevent_q[evt_gidx] = 'b0;
-      end
-      else begin : gen_implemented
-        if (NUM_HPM_EVENTS < 32) begin : gen_tie_off
-             assign mhpmevent_q[evt_gidx][31:NUM_HPM_EVENTS] = 'b0;
-        end
         always_ff @(posedge clk, negedge rst_n)
-            if (!rst_n)
+            if ( (evt_gidx < 3) || (evt_gidx >= (NUM_MHPMCOUNTERS+3) ) )begin
+                mhpmevent_q[evt_gidx] <= 'b0;
+            end else if (NUM_HPM_EVENTS < 32) begin : gen_tie_off
+             mhpmevent_q[evt_gidx][31:NUM_HPM_EVENTS] <= 'b0;
+            end else if (!rst_n)
                 mhpmevent_q[evt_gidx][NUM_HPM_EVENTS-1:0]  <= 'b0;
             else
                 mhpmevent_q[evt_gidx][NUM_HPM_EVENTS-1:0]  <= mhpmevent_n[evt_gidx][NUM_HPM_EVENTS-1:0] ;
+        assign mhpmevent_rdata[evt_gidx] = mhpmevent_q[evt_gidx];
       end
-      assign mhpmevent_rdata[evt_gidx] = mhpmevent_q[evt_gidx];
-    end
   endgenerate
 
   //  Inhibit Register: mcountinhibit_q

@@ -12,6 +12,8 @@
 // Contributors: Davide Schiavone <davide@openhwgroup.org>
 //               Halfdan Bechmann <halfdan.behcmann@silabs.com>
 
+`define COREV_ASSERT_OFF
+
 `ifndef COREV_ASSERT_OFF
   `include "cv32e40x_alignment_buffer_sva.sv"
   `include "cv32e40x_controller_fsm_sva.sv"

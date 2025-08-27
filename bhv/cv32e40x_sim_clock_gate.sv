@@ -28,7 +28,7 @@ module cv32e40x_clock_gate
   always_latch
   begin
      if (clk_i == 1'b0)
-       clk_en <= en_i | scan_cg_en_i;
+       clk_en = en_i | scan_cg_en_i;
   end
 
   assign clk_o = clk_i & clk_en;
