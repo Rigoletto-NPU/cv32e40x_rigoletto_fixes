@@ -1637,7 +1637,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       // minstret is located at index 2
       // Programable HPM counters start at index 3
         always_ff @(posedge clk, negedge rst_n)
-          if( (cnt_gidx == 1) || (cnt_gidx >= (NUM_MHPMCOUNTERS+3) ) || !rst_n ) begin
+          if ( !rst_n ) begin
+            mhpmcounter_q[cnt_gidx] <= 'b0;
+          end else if( (cnt_gidx == 1) || (cnt_gidx >= (NUM_MHPMCOUNTERS+3) )) begin
             mhpmcounter_q[cnt_gidx] <= 'b0;
           end else begin
             if (mhpmcounter_we[cnt_gidx][0]) begin
