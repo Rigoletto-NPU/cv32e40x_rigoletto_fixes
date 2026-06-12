@@ -1659,14 +1659,16 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     for (evt_gidx = 0; evt_gidx < 32; evt_gidx++) begin : gen_mhpmevent
       // programable HPM events start at index3
         always_ff @(posedge clk, negedge rst_n)
-            if ( (evt_gidx < 3) || (evt_gidx >= (NUM_MHPMCOUNTERS+3) ) )begin
-                mhpmevent_q[evt_gidx] <= 'b0;
-            end else if (NUM_HPM_EVENTS < 32) begin : gen_tie_off
-             mhpmevent_q[evt_gidx][31:NUM_HPM_EVENTS] <= 'b0;
-            end else if (!rst_n)
-                mhpmevent_q[evt_gidx][NUM_HPM_EVENTS-1:0]  <= 'b0;
-            else
-                mhpmevent_q[evt_gidx][NUM_HPM_EVENTS-1:0]  <= mhpmevent_n[evt_gidx][NUM_HPM_EVENTS-1:0] ;
+          if (!rst_n) begin
+            mhpmevent_q[evt_gidx] <= 'b0;
+          end else if ((evt_gidx < 3) || (evt_gidx >= (NUM_MHPMCOUNTERS+3))) begin
+            mhpmevent_q[evt_gidx] <= 'b0;
+          end else begin
+            if (NUM_HPM_EVENTS < 32) begin : gen_tie_off
+              mhpmevent_q[evt_gidx][31:NUM_HPM_EVENTS] <= 'b0;
+            end
+            mhpmevent_q[evt_gidx][NUM_HPM_EVENTS-1:0] <= mhpmevent_n[evt_gidx][NUM_HPM_EVENTS-1:0];
+          end
         assign mhpmevent_rdata[evt_gidx] = mhpmevent_q[evt_gidx];
       end
   endgenerate
