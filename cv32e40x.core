@@ -13,9 +13,11 @@ filesets:
       - bhv/cv32e40x_rvfi_data_obi.sv
       - bhv/cv32e40x_rvfi_instr_obi.sv
       - bhv/cv32e40x_rvfi.sv
-      - bhv/cv32e40x_sim_clock_gate.sv
       - bhv/cv32e40x_wrapper.sv
       - bhv/rvfi_sim_trace.sv
+
+      # Clock gating cell (selects impl via PRIM_DEFAULT_IMPL)
+      - rtl/cv32e40x_clock_gate.sv
 
 
       - rtl/cv32e40x_a_decoder.sv
