@@ -16,7 +16,7 @@ filesets:
       - bhv/cv32e40x_wrapper.sv
       - bhv/rvfi_sim_trace.sv
 
-      # Clock gating cell (selects impl via PRIM_DEFAULT_IMPL)
+      # Clock gate stub (pass-through; gating disabled in this fork)
       - rtl/cv32e40x_clock_gate.sv
 
 

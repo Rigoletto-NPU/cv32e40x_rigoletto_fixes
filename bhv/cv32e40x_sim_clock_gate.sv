@@ -8,29 +8,17 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-// !!! cv32e40x_sim_clock_gate file is meant for simulation only !!!
-// !!! It must not be used for ASIC synthesis                    !!!
-// !!! It must not be used for FPGA synthesis                    !!!
+// Simulation clock gate stub (clock gating disabled in this fork).
 
-module cv32e40x_clock_gate
-#(
+module cv32e40x_clock_gate #(
   parameter LIB = 0
-  )
-(
-    input  logic clk_i,
-    input  logic en_i,
-    input  logic scan_cg_en_i,
-    output logic clk_o
-  );
+) (
+  input  logic clk_i,
+  input  logic en_i,
+  input  logic scan_cg_en_i,
+  output logic clk_o
+);
 
-  logic clk_en;
+  assign clk_o = clk_i;
 
-  always_latch
-  begin
-     if (clk_i == 1'b0)
-       clk_en = en_i | scan_cg_en_i;
-  end
-
-  assign clk_o = clk_i & clk_en;
-
-endmodule // cv32e40x_clock_gate
+endmodule

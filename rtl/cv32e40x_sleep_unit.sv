@@ -25,19 +25,11 @@
 // Project Name:   CV32E40P                                                   //
 // Language:       SystemVerilog                                              //
 //                                                                            //
-// Description:    Sleep unit containing the instantiated clock gate which    //
-//                 provides the gated clock (clk_gated_o) for the rest        //
-//                 of the design.                                             //
+// Description:    Sleep unit; clk_gated_o is tied to clk_ungated_i (no clock //
+//                 gating in this fork). core_sleep_o still reflects WFI.     //
 //                                                                            //
-//                 The clock is gated for the following scenarios:            //
-//                                                                            //
-//                 - While waiting for fetch to become enabled                //
-//                 - While blocked on a WFI                                   //
-//                                                                            //
-//                 Sleep is signaled via core_sleep_o:                        //
-//                                                                            //
-//                 - During a WFI (except in debug)                           //
-//                                                                            //
+//                 Sleep is signaled via core_sleep_o during WFI; the clock is  //
+//                 not gated in this fork.                                      //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_sleep_unit import cv32e40x_pkg::*;
@@ -48,7 +40,7 @@ module cv32e40x_sleep_unit import cv32e40x_pkg::*;
   // Clock, reset interface
   input  logic        clk_ungated_i,            // Free running clock
   input  logic        rst_n,
-  output logic        clk_gated_o,              // Gated clock
+  output logic        clk_gated_o,              // Same as clk_ungated_i (no gating)
   input  logic        scan_cg_en_i,             // Enable all clock gates for testing
 
   // Core sleep
@@ -84,9 +76,7 @@ module cv32e40x_sleep_unit import cv32e40x_pkg::*;
   // Enable the clock only after the initial fetch enable while busy or waking up to become busy
   assign clock_en = fetch_enable_q && (ctrl_fsm_i.wake_from_sleep || core_busy_q);
 
-  // Sleep only in response to WFI which leads to clock disable. The controller determines the
-  // scenarios for which WFI can(not) cause sleep. WFI suppression is performed in the i_decoder
-  // based on the debug_wfi_no_sleep signal from the controller.
+  // Sleep status for WFI (clock enable is not used to gate the clock).
   assign core_sleep_o = fetch_enable_q && !clock_en;
 
   always_ff @(posedge clk_ungated_i, negedge rst_n)
@@ -103,15 +93,7 @@ module cv32e40x_sleep_unit import cv32e40x_pkg::*;
   // Fetch enable for Controller
   assign fetch_enable_o = fetch_enable_q;
 
-  // Main clock gate of CV32E40P
-  cv32e40x_clock_gate
-    #(.LIB (LIB))
-  core_clock_gate_i
-  (
-    .clk_i        ( clk_ungated_i   ),
-    .en_i         ( clock_en        ),
-    .scan_cg_en_i ( scan_cg_en_i    ),
-    .clk_o        ( clk_gated_o     )
-  );
+  // No clock gating: scalar and coprocessor share one clock tree.
+  assign clk_gated_o = clk_ungated_i;
 
 endmodule
