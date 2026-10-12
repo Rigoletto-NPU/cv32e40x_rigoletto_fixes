@@ -688,20 +688,40 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       // remember whether an instruction was accepted or rejected (required if EX stage is not ready)
       // TODO: check whether this state machine should be put back in its initial state when the instruction in ID gets killed
       logic xif_accepted_q, xif_rejected_q;
+      logic xif_issue_fire;
+      logic xif_resp_writeback_q;
+      logic xif_resp_exc_q;
+      logic xif_resp_dualwrite_q;
+      logic xif_resp_loadstore_q;
 
       assign xif_en = xif_insn_accept || xif_insn_reject;
+      assign xif_issue_fire = xif_issue_if.issue_valid && xif_issue_if.issue_ready;
 
       always_ff @(posedge clk, negedge rst_n) begin : ID_XIF_STATE_REGISTERS
         if (rst_n == 1'b0) begin
-          xif_accepted_q <= 1'b0;
-          xif_rejected_q <= 1'b0;
+          xif_accepted_q      <= 1'b0;
+          xif_rejected_q      <= 1'b0;
+          xif_resp_writeback_q <= 1'b0;
+          xif_resp_exc_q       <= 1'b0;
+          xif_resp_dualwrite_q <= 1'b0;
+          xif_resp_loadstore_q <= 1'b0;
         end else begin
           if ( (id_valid_o && ex_ready_i) || ctrl_fsm_i.kill_id ) begin
-            xif_accepted_q <= 1'b0;
-            xif_rejected_q <= 1'b0;
+            xif_accepted_q      <= 1'b0;
+            xif_rejected_q      <= 1'b0;
+            xif_resp_writeback_q <= 1'b0;
+            xif_resp_exc_q       <= 1'b0;
+            xif_resp_dualwrite_q <= 1'b0;
+            xif_resp_loadstore_q <= 1'b0;
           end else begin
             xif_accepted_q <= xif_insn_accept;
             xif_rejected_q <= xif_insn_reject;
+            if (xif_issue_fire) begin
+              xif_resp_writeback_q <= xif_issue_if.issue_resp.writeback;
+              xif_resp_exc_q       <= xif_issue_if.issue_resp.exc;
+              xif_resp_dualwrite_q <= xif_issue_if.issue_resp.dualwrite;
+              xif_resp_loadstore_q <= xif_issue_if.issue_resp.loadstore;
+            end
           end
         end
       end
@@ -748,41 +768,17 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_waiting = xif_issue_if.issue_valid && !xif_issue_if.issue_ready && !xif_accepted_q && !xif_rejected_q;
 
       // an instruction was offloaded successfully if the coprocessor accepts it (or has accepted it)
-      assign xif_insn_accept = (xif_issue_if.issue_valid && xif_issue_if.issue_ready &&  xif_issue_if.issue_resp.accept) || xif_accepted_q;
-      assign xif_insn_reject = (xif_issue_if.issue_valid && xif_issue_if.issue_ready && !xif_issue_if.issue_resp.accept) || xif_rejected_q;
+      assign xif_insn_accept = (xif_issue_fire &&  xif_issue_if.issue_resp.accept) || xif_accepted_q;
+      assign xif_insn_reject = (xif_issue_fire && !xif_issue_if.issue_resp.accept) || xif_rejected_q;
 
-
-
-      // Need to hold these signals until the current instruction leaves ID.  Possible to successfully offload instruction before EX stage is ready to accept instruction.
-      logic xif_we_q;
-      logic xif_exception_q;
-      logic xif_dualwrite_q;
-      logic xif_loadstore_q;
-      always_ff @(posedge clk, negedge rst_n) begin
-        if (rst_n == 1'b0) begin
-          xif_we_q  <= 1'b0;
-          xif_exception_q  <= 1'b0;
-          xif_dualwrite_q  <= 1'b0;
-          xif_loadstore_q  <= 1'b0;
-        end else begin
-          if (xif_issue_if.issue_valid && ~ex_ready_i) begin
-            xif_we_q  <= xif_issue_if.issue_resp.writeback;
-            xif_exception_q  <= xif_issue_if.issue_resp.exc;
-            xif_dualwrite_q  <= xif_issue_if.issue_resp.dualwrite;
-            xif_loadstore_q  <= xif_issue_if.issue_resp.loadstore;
-          end else if (ex_ready_i && id_valid_o) begin
-            xif_we_q  <= 1'b0;
-            xif_exception_q  <= 1'b0;
-            xif_dualwrite_q  <= 1'b0;
-            xif_loadstore_q  <= 1'b0;
-          end
-        end
-      end
-
-      assign xif_we        = (xif_issue_if.issue_valid && xif_issue_if.issue_resp.writeback) || xif_we_q;
-      assign xif_exception = (xif_issue_if.issue_valid && xif_issue_if.issue_resp.exc) || xif_exception_q;
-      assign xif_dualwrite = (xif_issue_if.issue_valid && xif_issue_if.issue_resp.dualwrite) || xif_dualwrite_q;
-      assign xif_loadstore = (xif_issue_if.issue_valid && xif_issue_if.issue_resp.loadstore) || xif_loadstore_q;
+      assign xif_we        = xif_accepted_q ? xif_resp_writeback_q :
+                                              (xif_issue_fire && xif_issue_if.issue_resp.writeback);
+      assign xif_exception = xif_accepted_q ? xif_resp_exc_q :
+                                              (xif_issue_fire && xif_issue_if.issue_resp.exc);
+      assign xif_dualwrite = xif_accepted_q ? xif_resp_dualwrite_q :
+                                              (xif_issue_fire && xif_issue_if.issue_resp.dualwrite);
+      assign xif_loadstore = xif_accepted_q ? xif_resp_loadstore_q :
+                                              (xif_issue_fire && xif_issue_if.issue_resp.loadstore);
 
     end else begin : no_x_ext
 
